@@ -59,42 +59,53 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Function to handle form submission for adding a new event
-async function handleEventFormSubmission(e) {
-  e.preventDefault();
+document.getElementById('event-form').addEventListener('submit', async function (event) {
+  event.preventDefault();
 
-  const name = document.getElementById("name").value;
-  const date = document.getElementById("date").value;
-  const location = document.getElementById("location").value;
-  const description = document.getElementById("description").value;
+  // Get form data
+  const name = document.getElementById('name').value;
+  const date = formatDatetime(document.getElementById('date').value, document.getElementById('time').value);
+  const location = document.getElementById('location').value;
+  const description = document.getElementById('description').value;
 
-  const newEventData = {
+  // Combine date and time and format as datetime string
+  function formatDatetime(date, time) {
+    return new Date(`${date}T${time}`).toISOString();
+    }
+
+  const formData = {
     name,
-    description,
     date,
     location,
+    description
   };
 
-  try {
-    const response = await fetch(`${baseURL}/${cohortName}/${resource}`, {
-      method: "POST",
+  // Make a POST request to the API
+  await fetch(`${baseURL}/${cohortName}/${resource}`, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+          'Content-Type': 'application/json',
       },
-      body: JSON.stringify(newEventData),
-    });
+      body: JSON.stringify(formData),
+  })
+  .then(response => response.json())
+  .then(data => {
+      if (data.success) {
+          // Update UI with the new event
+          const partyList = document.getElementById('party-list');
+          const listItem = document.createElement('li');
+          listItem.textContent = `${data.data.name} - ${data.data.date} at ${data.data.time}, ${data.data.location}`;
+          partyList.appendChild(listItem);
 
-    if (response.status === 201) {
-      // Event creation successful, update the list of events and clear the form
-      renderEvents(); // Refresh the event list
-      document.getElementById("event-form").reset(); // Clear the form fields
-    } else {
-      console.log("Event creation failed.");
-    }
-  } catch (error) {
-    console.error("Error creating event:", error);
-  }
-}
-
-// Attach the form submission handler
-const eventForm = document.getElementById("event-form");
-eventForm.addEventListener("submit", handleEventFormSubmission);
+          // Clear the form
+          event.target.reset();
+      } else {
+          // Handle API error
+          console.error(data.error.message);
+      }
+  })
+  .catch(error => {
+      // Handle network error
+      console.error('Error:', error);
+  });
+});
